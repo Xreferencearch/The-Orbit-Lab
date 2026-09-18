@@ -1,0 +1,2260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Orbit Lab</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=Urbanist:wght@300;400;500;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #0a0d12;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+body {
+    font-family: 'Urbanist', sans-serif;
+    color: #f1ecdd;
+    overflow-x: hidden;
+    cursor: none;
+}
+
+* { cursor: none !important; }
+
+::-webkit-scrollbar { display: none; width: 0; }
+
+/* Cursor */
+.cursor-inner {
+    position: fixed; top: 0; left: 0;
+    width: 6px; height: 6px;
+    border: 2px solid rgba(241, 236, 221, 1);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9999;
+}
+.cursor-outer {
+    position: fixed; top: 0; left: 0;
+    width: 40px; height: 40px;
+    border: 1.5px solid rgba(241, 236, 221, 0.7);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9998;
+    transition: width 0.3s, height 0.3s, background 0.3s, border-color 0.3s;
+}
+.cursor-outer.hovering { width: 64px; height: 64px; background: rgba(241, 236, 221, 0.08); }
+.cursor-outer.dragging { width: 26px; height: 26px; background: rgba(231, 254, 85, 0.2); border-color: #e7fe55; }
+
+/* Header */
+.main-header {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 14px 60px;
+    background: rgba(10, 13, 18, 0.55);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(241, 236, 221, 0.08);
+}
+.brand { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 5px; text-transform: uppercase; }
+.header-logo { justify-self: center; display: inline-flex; align-items: center; }
+.header-logo img {
+    height: 62px; width: auto; display: block;
+    filter: invert(1);
+    opacity: 0.9;
+    transition: opacity 0.3s;
+}
+.header-logo:hover img { opacity: 1; }
+.header-right { justify-self: end; display: flex; align-items: center; gap: 24px; }
+.header-nav { display: flex; align-items: center; gap: 22px; }
+.nav-link {
+    color: #f1ecdd; text-decoration: none;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
+    font-weight: 500; transition: color 0.3s;
+    white-space: nowrap;
+}
+.nav-link:hover { color: #e7fe55; }
+.nav-dot { width: 3px; height: 3px; background: rgba(241, 236, 221, 0.2); border-radius: 50%; flex-shrink: 0; }
+.contact-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 24px;
+    background: #f1ecdd; color: #0a0d12;
+    text-decoration: none;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+    border-radius: 20px;
+    transition: transform 0.3s, background 0.3s;
+    white-space: nowrap;
+}
+.btn-circle {
+    display: inline-block; width: 6px; height: 6px;
+    border: 1px solid #0a0d12; border-radius: 50%; background: transparent;
+}
+.contact-btn:hover { transform: scale(1.05); background: #e7fe55; }
+
+.section-kicker {
+    font-family: 'Urbanist', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #9aa3ab;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+.section-kicker::before {
+    content: '';
+    width: 22px; height: 1px;
+    background: #e7fe55;
+    display: inline-block;
+}
+
+/* ============================================================
+   Shared panel component — used by Intro, Brand Principles
+   ============================================================ */
+.principle-panel {
+    position: relative;
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    padding: 70px 60px;
+    box-sizing: border-box;
+}
+.principle-panel .panel-bg {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center;
+    transform: scale(1.08);
+    opacity: 0;
+    transition: opacity 1.4s cubic-bezier(0.25, 1, 0.5, 1),
+                transform 1.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.principle-panel.in-view .panel-bg { opacity: 1; transform: scale(1); }
+.principle-panel .panel-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10,13,18,0.05) 0%, rgba(10,13,18,0.30) 55%, rgba(10,13,18,0.88) 100%);
+}
+.panel-content { position: relative; z-index: 2; max-width: 620px; }
+.panel-kicker {
+    display: inline-flex;
+    margin-bottom: 18px;
+    opacity: 0; transform: translateY(16px);
+    transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.principle-panel.in-view .panel-kicker { opacity: 1; transform: translateY(0); transition-delay: 0.1s; }
+
+.panel-heading {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(38px, 5.4vw, 74px);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: 0.5px;
+    color: #f1ecdd;
+    margin-bottom: 18px;
+    text-shadow: 0 6px 30px rgba(10, 13, 18, 0.85);
+    opacity: 0; transform: translateY(30px); filter: blur(8px);
+    transition: opacity 0.9s cubic-bezier(0.25, 1, 0.5, 1), transform 0.9s cubic-bezier(0.25, 1, 0.5, 1), filter 0.9s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.principle-panel.in-view .panel-heading { opacity: 1; transform: translateY(0); filter: blur(0); transition-delay: 0.25s; }
+.panel-heading.small { font-size: clamp(26px, 2.8vw, 38px); }
+
+.panel-line {
+    font-size: 17px; line-height: 1.7; font-weight: 300;
+    color: #9aa3ab; letter-spacing: 0.3px;
+    max-width: 460px;
+    text-shadow: 0 2px 16px rgba(10, 13, 18, 0.85);
+    opacity: 0; transform: translateY(20px);
+    transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.principle-panel.in-view .panel-line { opacity: 1; transform: translateY(0); transition-delay: 0.45s; }
+
+/* Tech Integration — split mechanical / digital */
+.principle-panel.split { padding: 0; flex-direction: row; align-items: stretch; }
+.tech-half {
+    position: relative;
+    width: 50%; height: 100%;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 70px 50px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+.tech-half.digital {
+    background: radial-gradient(circle at 50% 55%, rgba(184,228,234,0.07), transparent 62%), #0d1117;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.tech-half.digital::before {
+    content: '';
+    position: absolute; top: 0; bottom: 0; left: 0;
+    width: 1px;
+    background: rgba(241, 236, 221, 0.14);
+}
+.tech-half.digital .panel-content { max-width: 480px; }
+.tech-half.digital .panel-kicker,
+.tech-half.digital .panel-line { margin-left: auto; margin-right: auto; }
+.app-mock {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 26px auto;
+    display: block;
+    border-radius: 18px;
+    opacity: 0; transform: translateY(30px) scale(0.96);
+    transition: opacity 1s cubic-bezier(0.25, 1, 0.5, 1), transform 1s cubic-bezier(0.25, 1, 0.5, 1);
+    filter: drop-shadow(0 30px 60px rgba(0,0,0,0.55));
+}
+.principle-panel.in-view .app-mock { opacity: 1; transform: translateY(0) scale(1); transition-delay: 0.2s; }
+
+/* ============================================================
+   Intro — hero (Core) + merged concept scene (Gravity / Permanence)
+   ============================================================ */
+.intro-hero { justify-content: center; align-items: center; text-align: center; }
+.intro-hero .panel-content { max-width: 720px; }
+.intro-hero .panel-line { margin-left: auto; margin-right: auto; }
+.intro-hero .hero-text-scrim {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: min(920px, 92vw); height: min(560px, 70vh);
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse at center, rgba(10,13,18,0.8) 0%, rgba(10,13,18,0.55) 45%, rgba(10,13,18,0) 78%);
+    pointer-events: none;
+}
+.intro-hero .panel-heading {
+    text-shadow: 0 4px 20px rgba(10,13,18,0.95), 0 14px 50px rgba(10,13,18,0.9), 0 0 90px rgba(10,13,18,0.75);
+}
+.intro-hero .panel-line {
+    color: #e4e7ea;
+    text-shadow: 0 2px 14px rgba(10,13,18,1), 0 8px 34px rgba(10,13,18,0.95);
+}
+
+.hero-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.hero-particle {
+    position: absolute; bottom: -10px; left: 0;
+    border-radius: 50%;
+    background: rgba(241, 236, 221, 0.6);
+    animation-name: heroParticleFloat;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+@keyframes heroParticleFloat {
+    0% { transform: translate(0, 0); opacity: 0; }
+    10% { opacity: var(--pmax, 0.4); }
+    90% { opacity: var(--pmax, 0.4); }
+    100% { transform: translate(var(--drift, 20px), -115vh); opacity: 0; }
+}
+
+.concept-scene { position: relative; height: 200vh; }
+.concept-sticky {
+    position: sticky; top: 0;
+    height: 100vh;
+    overflow: hidden;
+    background: #0a0d12;
+}
+.concept-canvas { position: absolute; inset: 0; display: block; outline: none; z-index: 0; }
+.concept-beat {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 60px;
+    box-sizing: border-box;
+    text-align: center;
+    opacity: 0;
+    will-change: opacity, transform;
+}
+.concept-beat .panel-content { max-width: 700px; position: relative; z-index: 2; }
+.concept-beat .panel-line {
+    margin-left: auto; margin-right: auto;
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(24px, 3.2vw, 40px);
+    font-weight: 600;
+    line-height: 1.5;
+    color: #f1ecdd;
+    max-width: 100%;
+    text-shadow: 0 4px 22px rgba(10, 13, 18, 0.95), 0 14px 50px rgba(10, 13, 18, 0.85);
+}
+.concept-beat .panel-heading,
+.concept-beat .panel-line {
+    opacity: 1; transform: none; filter: none; transition: none;
+}
+
+/* ============================================================
+   Brand Principles: overview hub
+   ============================================================ */
+.principles-hub {
+    position: relative;
+    min-height: 100vh;
+    padding: 130px 60px 70px 60px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+}
+.hub-intro { max-width: 640px; }
+.hub-heading {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(34px, 4.6vw, 60px);
+    font-weight: 700;
+    line-height: 1.08;
+    color: #f1ecdd;
+    margin: 16px 0 12px 0;
+}
+.hub-line { font-size: 16px; color: #9aa3ab; font-weight: 300; line-height: 1.7; }
+
+.hub-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 14px;
+    min-height: 60vh;
+}
+.hub-card {
+    position: relative;
+    overflow: hidden;
+    border: none;
+    border-radius: 4px;
+    background: #0d1117;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    display: block;
+    width: 100%;
+    font: inherit;
+    color: inherit;
+}
+.hub-card-media {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center;
+    transform: scale(1.02);
+    transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), filter 0.6s ease;
+    filter: saturate(0.85) brightness(0.8);
+}
+.hub-card:hover .hub-card-media { transform: scale(1.08); filter: saturate(1.05) brightness(1); }
+.hub-card-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10,13,18,0.1) 0%, rgba(10,13,18,0.4) 60%, rgba(10,13,18,0.92) 100%);
+}
+.hub-card-arrow {
+    position: absolute; top: 16px; right: 20px;
+    width: 30px; height: 30px;
+    border: 1px solid rgba(241, 236, 221, 0.4);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #f1ecdd;
+    transition: background 0.3s, border-color 0.3s, transform 0.3s, color 0.3s;
+}
+.hub-card:hover .hub-card-arrow { background: #e7fe55; border-color: #e7fe55; color: #0a0d12; transform: scale(1.1); }
+.hub-card-title {
+    position: absolute; left: 24px; bottom: 22px; right: 24px;
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(18px, 1.9vw, 25px);
+    font-weight: 700;
+    line-height: 1.2;
+    color: #f1ecdd;
+}
+.hub-card {
+    opacity: 0; transform: translateY(24px);
+    transition: opacity 0.7s cubic-bezier(0.25, 1, 0.5, 1), transform 0.7s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.principles-hub.in-view .hub-card { opacity: 1; transform: translateY(0); }
+.hub-grid .hub-card:nth-child(1) { transition-delay: 0.05s; }
+.hub-grid .hub-card:nth-child(2) { transition-delay: 0.12s; }
+.hub-grid .hub-card:nth-child(3) { transition-delay: 0.19s; }
+.hub-grid .hub-card:nth-child(4) { transition-delay: 0.26s; }
+
+@media (max-width: 720px) {
+    .hub-grid { grid-template-columns: 1fr; grid-template-rows: repeat(4, 220px); }
+}
+
+/* ---- Brand Principles: detail overlays ---- */
+html.detail-open, body.detail-open { overflow: hidden; }
+
+.principle-detail {
+    position: fixed; inset: 0;
+    z-index: 200;
+    background: #0a0d12;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.principle-detail.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+.principle-detail .principle-panel { height: 100vh; }
+.principle-detail .detail-hero.principle-panel { height: 58vh; }
+.detail-hero .panel-content { max-width: 560px; }
+.detail-hero .panel-heading { font-size: clamp(30px, 4vw, 54px); margin-bottom: 14px; }
+.detail-hero .panel-line { font-size: 15px; }
+
+.detail-moments {
+    position: relative;
+    background: #0a0d12;
+    padding: 90px 60px 100px 60px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 90px;
+}
+.moment-row {
+    display: flex;
+    align-items: center;
+    gap: 60px;
+    max-width: 1120px;
+    margin: 0 auto;
+    width: 100%;
+}
+.moment-row.reverse { flex-direction: row-reverse; }
+.moment-media {
+    flex: 1 1 55%;
+    min-width: 0;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
+    opacity: 0; transform: translateY(30px);
+    transition: opacity 0.9s cubic-bezier(0.25, 1, 0.5, 1), transform 0.9s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.moment-row.in-view .moment-media { opacity: 1; transform: translateY(0); }
+.moment-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.moment-media.contain { background: #0d1117; }
+.moment-media.contain img { object-fit: contain; }
+.moment-text {
+    flex: 1 1 40%;
+    min-width: 0;
+    opacity: 0; transform: translateY(20px);
+    transition: opacity 0.9s cubic-bezier(0.25, 1, 0.5, 1) 0.15s, transform 0.9s cubic-bezier(0.25, 1, 0.5, 1) 0.15s;
+}
+.moment-row.in-view .moment-text { opacity: 1; transform: translateY(0); }
+.moment-heading {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(22px, 2.4vw, 32px);
+    font-weight: 700;
+    color: #f1ecdd;
+    margin: 14px 0 14px 0;
+    line-height: 1.15;
+}
+.moment-text p {
+    font-size: 15.5px; line-height: 1.75; font-weight: 300;
+    color: #9aa3ab; letter-spacing: 0.2px;
+    max-width: 420px;
+}
+@media (max-width: 860px) {
+    .moment-row, .moment-row.reverse { flex-direction: column; gap: 28px; }
+}
+
+.detail-close {
+    position: fixed; top: 24px; right: 28px;
+    z-index: 205;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px;
+    background: rgba(10, 13, 18, 0.6);
+    border: 1px solid rgba(241, 236, 221, 0.25);
+    border-radius: 20px;
+    color: #f1ecdd;
+    font-family: 'Urbanist', sans-serif;
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500;
+    backdrop-filter: blur(6px);
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+.detail-close:hover { background: #e7fe55; color: #0a0d12; border-color: #e7fe55; }
+
+.detail-extra {
+    position: relative;
+    background: #0a0d12;
+    padding: 60px 60px 90px 60px;
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 48px;
+}
+
+/* ---- Brand switcher (kiosk skins / table decor tabs) ---- */
+.brand-switcher { flex: 1 1 380px; max-width: 460px; }
+.brand-switcher.wide { flex: 1 1 100%; max-width: 760px; margin: 0 auto; }
+.brand-switcher.wide .switcher-stage { aspect-ratio: 16 / 9; }
+.switcher-tabs {
+    display: flex; flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.switcher-tab {
+    padding: 8px 16px;
+    background: rgba(241, 236, 221, 0.06);
+    border: 1px solid rgba(241, 236, 221, 0.18);
+    border-radius: 16px;
+    color: #9aa3ab;
+    font-family: 'Urbanist', sans-serif;
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase; font-weight: 500;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+.switcher-tab:hover { color: #f1ecdd; border-color: rgba(241, 236, 221, 0.4); }
+.switcher-tab.active { background: #e7fe55; border-color: #e7fe55; color: #0a0d12; }
+.switcher-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #0d1117;
+    border: 1px solid rgba(241, 236, 221, 0.1);
+}
+.switcher-image {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center;
+    transition: opacity 0.22s ease;
+}
+.switcher-image.switching { opacity: 0; }
+.switcher-caption {
+    display: block;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #9aa3ab;
+    letter-spacing: 0.3px;
+}
+
+/* ============================================================
+   System Diagram
+   ============================================================ */
+.diagram-section {
+    position: relative;
+    min-height: 100vh;
+    padding: 130px 60px 100px 60px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 44px;
+    background: #0a0d12;
+}
+.diagram-intro { max-width: 640px; text-align: center; }
+.diagram-heading {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(34px, 4.6vw, 58px);
+    font-weight: 700;
+    line-height: 1.08;
+    color: #f1ecdd;
+    margin: 16px 0 12px 0;
+}
+.diagram-line { font-size: 16px; color: #9aa3ab; font-weight: 300; line-height: 1.7; }
+
+.diagram-svg-wrap {
+    width: 100%; max-width: 900px;
+    opacity: 0; transform: translateY(30px) scale(0.96);
+    transition: opacity 1s cubic-bezier(0.25, 1, 0.5, 1), transform 1s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.diagram-section.in-view .diagram-svg-wrap { opacity: 1; transform: translateY(0) scale(1); }
+.diagram-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.ring { fill: none; stroke: rgba(241, 236, 221, 0.25); stroke-width: 1; }
+.core-dot { fill: #e7fe55; }
+.core-label { fill: #9aa3ab; font-family: 'Syne', sans-serif; font-size: 15px; letter-spacing: 2px; }
+.marker { fill: #0a0d12; stroke: #f1ecdd; stroke-width: 1.5; }
+.leader { fill: none; stroke: rgba(241, 236, 221, 0.3); stroke-width: 1; }
+.diagram-label { fill: #f1ecdd; font-family: 'Urbanist', sans-serif; font-size: 15px; letter-spacing: 1px; font-weight: 500; }
+.diagram-orbit { transform-origin: 380px 350px; }
+.diagram-orbit circle { fill: rgba(241, 236, 221, 0.035); stroke: rgba(241, 236, 221, 0.4); stroke-width: 1; }
+.diagram-orbit-1 { animation: diagramOrbit 20s linear infinite; }
+.diagram-orbit-2 { animation: diagramOrbit 32s linear infinite reverse; }
+.diagram-orbit-3 { animation: diagramOrbit 46s linear infinite; }
+.diagram-orbit-4 { animation: diagramOrbit 64s linear infinite reverse; }
+@keyframes diagramOrbit {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   Floor Plan (placeholder)
+   ============================================================ */
+.floorplan-section {
+    position: relative;
+    min-height: 100vh;
+    padding: 130px 60px 100px 60px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    background: #0a0d12;
+}
+.plan-compare {
+    position: relative;
+    width: 100%; max-width: 1400px;
+    aspect-ratio: 9921 / 7015;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0d1117;
+    border: 1px solid rgba(241, 236, 221, 0.1);
+    box-shadow: 0 40px 90px rgba(0, 0, 0, 0.5);
+    opacity: 0; transform: translateY(24px);
+    transition: opacity 0.9s cubic-bezier(0.25, 1, 0.5, 1), transform 0.9s cubic-bezier(0.25, 1, 0.5, 1);
+    touch-action: none;
+}
+.floorplan-section.in-view .plan-compare { opacity: 1; transform: translateY(0); }
+.plan-layer { position: absolute; inset: 0; }
+.plan-layer img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.plan-overlay { will-change: clip-path; }
+.plan-tag {
+    position: absolute; top: 18px;
+    font-family: 'Urbanist', sans-serif;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600;
+    color: #0a0d12;
+    background: rgba(241, 236, 221, 0.9);
+    padding: 6px 14px; border-radius: 14px;
+    pointer-events: none;
+}
+.plan-base .plan-tag { left: 18px; }
+.plan-overlay .plan-tag { right: 18px; }
+.plan-handle {
+    position: absolute; top: 0; bottom: 0;
+    width: 2px;
+    background: #e7fe55;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+.plan-handle-grip {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: #e7fe55;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: #0a0d12;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+.plan-hint {
+    font-size: 12px; color: #565d64; letter-spacing: 0.3px;
+    text-align: center;
+}
+
+/* ============================================================
+   Finale — horizontal scroll through space renders (placeholder)
+   ============================================================ */
+.finale-section { position: relative; height: 400vh; }
+.finale-track {
+    position: sticky; top: 0;
+    height: 100vh; width: 400vw;
+    display: flex;
+    will-change: transform;
+}
+.finale-frame {
+    position: relative;
+    width: 100vw; height: 100vh;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: #0a0d12;
+    border-left: 1px solid rgba(241, 236, 221, 0.06);
+}
+.finale-frame-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.finale-frame::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10,13,18,0) 50%, rgba(10,13,18,0.8) 100%);
+    pointer-events: none;
+}
+.finale-frame-caption {
+    position: absolute; left: 60px; bottom: 60px; z-index: 2;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.finale-frame-index { font-family: 'Syne', sans-serif; font-size: 14px; letter-spacing: 3px; color: #e7fe55; text-shadow: 0 4px 16px rgba(0,0,0,0.7); }
+.finale-frame-label { font-family: 'Urbanist', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #f1ecdd; text-shadow: 0 4px 16px rgba(0,0,0,0.7); }
+
+.finale-frame-materials .finale-material-stage { position: absolute; inset: 0; }
+.finale-material-image {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}
+.finale-material-image.active { opacity: 1; }
+.finale-material-tabs { position: absolute; top: 50px; right: 60px; z-index: 3; display: flex; gap: 8px; }
+.finale-material-tab {
+    padding: 9px 20px;
+    background: rgba(10, 13, 18, 0.55);
+    border: 1px solid rgba(241, 236, 221, 0.3);
+    border-radius: 16px;
+    color: #f1ecdd;
+    font-family: 'Urbanist', sans-serif;
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600;
+    backdrop-filter: blur(6px);
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+.finale-material-tab.active { background: #e7fe55; color: #0a0d12; border-color: #e7fe55; }
+
+/* ============================================================
+   Pop-Up Trends
+   ============================================================ */
+.trends-section {
+    position: relative;
+    background: #0a0d12;
+    padding: 130px 60px 140px 60px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+}
+.trends-grid {
+    display: flex;
+    align-items: center;
+    gap: 80px;
+    max-width: 1160px;
+    width: 100%;
+    opacity: 0; transform: translateY(24px);
+    transition: opacity 0.9s cubic-bezier(0.25, 1, 0.5, 1), transform 0.9s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.trends-grid.in-view { opacity: 1; transform: translateY(0); }
+.trends-text { flex: 1 1 44%; }
+.trends-text .diagram-heading { margin: 16px 0 18px 0; }
+.trends-text p { font-size: 15.5px; line-height: 1.8; font-weight: 300; color: #9aa3ab; max-width: 460px; margin-bottom: 16px; }
+.trends-window-wrap { flex: 1 1 34%; display: flex; justify-content: center; }
+.trends-window {
+    position: relative;
+    width: min(300px, 80vw);
+    aspect-ratio: 9 / 16;
+    border-radius: 22px;
+    overflow: hidden;
+    background: #0d1117;
+    border: 1px solid rgba(241, 236, 221, 0.14);
+    box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+}
+.trends-slide {
+    position: absolute; inset: 0;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+}
+.trends-slide.active { opacity: 1; }
+.trends-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.trends-slide-scrim {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 30px 16px 16px 16px;
+    background: linear-gradient(180deg, rgba(10,13,18,0) 0%, rgba(10,13,18,0.85) 100%);
+}
+.trends-slide-caption {
+    font-family: 'Urbanist', sans-serif;
+    font-size: 11.5px; letter-spacing: 0.5px; font-weight: 500;
+    color: #f1ecdd;
+}
+.trends-dots {
+    position: absolute; top: 14px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 6px;
+    z-index: 3;
+}
+.trends-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(241, 236, 221, 0.35);
+    transition: background 0.3s, transform 0.3s;
+    border: none; padding: 0;
+}
+.trends-dot.active { background: #e7fe55; transform: scale(1.3); }
+@media (max-width: 860px) {
+    .trends-grid { flex-direction: column; gap: 44px; }
+    .trends-text p { max-width: none; }
+}
+
+/* ============================================================
+   Roadmap / Proposal
+   ============================================================ */
+.roadmap-section {
+    position: relative;
+    background: #0a0d12;
+    padding: 130px 60px 150px 60px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 120px;
+}
+.roadmap-intro { max-width: 700px; margin: 0 auto; text-align: center; }
+.roadmap-block { max-width: 1120px; margin: 0 auto; width: 100%; }
+.roadmap-block-inner {
+    opacity: 0; transform: translateY(24px);
+    transition: opacity 0.9s cubic-bezier(0.25, 1, 0.5, 1), transform 0.9s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.roadmap-block-inner.in-view { opacity: 1; transform: translateY(0); }
+.roadmap-block-heading { max-width: 640px; }
+.roadmap-block-heading .diagram-heading { margin: 16px 0 12px 0; }
+.roadmap-block-heading .diagram-line { max-width: 560px; }
+
+.phase-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 36px; }
+.phase-card { background: #0d1117; border: 1px solid rgba(241, 236, 221, 0.1); border-radius: 8px; padding: 30px 28px; }
+.phase-card-num { font-family: 'Syne', sans-serif; font-size: 12px; letter-spacing: 3px; color: #e7fe55; }
+.phase-card h4 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: #f1ecdd; margin: 12px 0 12px 0; }
+.phase-card p { font-size: 14px; color: #9aa3ab; line-height: 1.7; font-weight: 300; }
+.phase-timing { display: flex; gap: 60px; flex-wrap: wrap; justify-content: center; margin-top: 44px; padding-top: 40px; border-top: 1px solid rgba(241, 236, 221, 0.1); }
+.timing-item { text-align: center; }
+.timing-value { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 700; color: #f1ecdd; }
+.timing-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #f1ecdd; margin-top: 8px; opacity: 0.85; }
+.timing-note { font-size: 13px; color: #9aa3ab; font-weight: 300; margin-top: 8px; max-width: 260px; line-height: 1.6; }
+
+.deliver-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 36px; }
+.deliver-card { background: #0d1117; border: 1px solid rgba(241, 236, 221, 0.1); border-radius: 8px; padding: 32px; }
+.deliver-card.after { border-color: rgba(184, 228, 234, 0.22); }
+.deliver-card h4 { font-family: 'Syne', sans-serif; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; color: #e7fe55; }
+.deliver-card.after h4 { color: #b8e4ea; }
+.deliver-card ul { margin-top: 16px; padding-left: 18px; color: #9aa3ab; font-size: 14.5px; line-height: 1.85; font-weight: 300; }
+.deliver-card li { margin-bottom: 4px; }
+
+.scope-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 36px; }
+.scope-card { background: #0d1117; border: 1px solid rgba(241, 236, 221, 0.1); border-radius: 8px; padding: 28px 30px; }
+.scope-card h4 { font-family: 'Syne', sans-serif; font-size: 15px; letter-spacing: 1.5px; text-transform: uppercase; color: #f1ecdd; }
+.scope-card ul { margin-top: 14px; padding-left: 18px; color: #9aa3ab; font-size: 14px; line-height: 1.8; font-weight: 300; }
+.scope-card li { margin-bottom: 4px; }
+
+.timeline { display: flex; flex-direction: column; margin-top: 40px; border-left: 1px solid rgba(241, 236, 221, 0.15); padding-left: 40px; }
+.timeline-step { position: relative; padding-bottom: 48px; }
+.timeline-step:last-child { padding-bottom: 0; }
+.timeline-step::before {
+    content: attr(data-num);
+    position: absolute; left: -60px; top: 0;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: #0d1117; border: 1px solid rgba(241, 236, 221, 0.28);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: #e7fe55;
+}
+.timeline-step h4 { font-family: 'Syne', sans-serif; font-size: 19px; font-weight: 700; color: #f1ecdd; margin-bottom: 10px; }
+.timeline-step ul { padding-left: 18px; color: #9aa3ab; font-size: 14px; line-height: 1.8; font-weight: 300; }
+.timeline-step li { margin-bottom: 3px; }
+
+.next-step-inner { text-align: center; max-width: 760px; margin: 0 auto; }
+.next-step-inner .diagram-heading { margin: 16px 0 20px 0; }
+.next-step-inner p { font-size: 16px; color: #9aa3ab; font-weight: 300; line-height: 1.8; max-width: 620px; margin: 0 auto; }
+
+.appendix-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 36px; }
+.appendix-card h4 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: #f1ecdd; }
+.appendix-card .appendix-role { display: block; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #e7fe55; margin: 8px 0 18px 0; }
+.appendix-card p { font-size: 13.5px; color: #9aa3ab; font-weight: 300; line-height: 1.8; }
+.appendix-quote { font-style: italic; color: #b8e4ea; margin-top: 16px; font-size: 14px; font-weight: 300; }
+
+@media (max-width: 860px) {
+    .phase-grid, .deliver-grid, .scope-grid, .appendix-grid { grid-template-columns: 1fr; }
+    .timeline { padding-left: 30px; }
+    .timeline-step::before { left: -46px; width: 28px; height: 28px; font-size: 11px; }
+}
+
+/* ============================================================
+   Closing — bookend with the opening image
+   ============================================================ */
+.closing-section {
+    position: relative;
+    height: 100vh;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+}
+.closing-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    transform: scale(1.05);
+}
+.closing-scrim {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(10,13,18,0.4) 0%, rgba(10,13,18,0.78) 65%, rgba(10,13,18,0.94) 100%);
+}
+.closing-content {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+    opacity: 0; transform: translateY(20px);
+    transition: opacity 1.1s cubic-bezier(0.25, 1, 0.5, 1), transform 1.1s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.closing-section.in-view .closing-content { opacity: 1; transform: translateY(0); }
+.closing-brand { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: #f1ecdd; }
+.closing-logo-link { display: inline-flex; align-items: center; }
+.closing-logo { height: 70px; width: auto; display: block; filter: invert(1); opacity: 0.95; transition: opacity 0.3s; }
+.closing-logo-link:hover .closing-logo { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="cursor-inner"></div>
+<div class="cursor-outer"></div>
+
+<div class="main-header">
+  <div class="brand">The Orbit Lab</div>
+  <a class="header-logo" href="https://externalreference.com/" target="_blank" rel="noopener noreferrer" aria-label="External Reference — opens in a new tab">
+    <img src="IMAGES/logo/external-reference-logo.png" alt="External Reference">
+  </a>
+  <div class="header-right">
+    <nav class="header-nav">
+      <a href="#intro-core" class="nav-link">Concept</a>
+      <span class="nav-dot"></span>
+      <a href="#brand-principles" class="nav-link">Brand Principles</a>
+      <span class="nav-dot"></span>
+      <a href="#system-diagram" class="nav-link">The Space</a>
+      <span class="nav-dot"></span>
+      <a href="#roadmap" class="nav-link">Roadmap</a>
+    </nav>
+    <a href="#" class="contact-btn">Contact <span class="btn-circle"></span></a>
+  </div>
+</div>
+
+<main class="site-content">
+
+  <div class="principle-panel intro-panel intro-hero" id="intro-core">
+    <div class="panel-bg" style="background-image:url('IMAGES/01.jpg')"></div>
+    <div class="panel-scrim"></div>
+    <div class="hero-text-scrim"></div>
+    <div class="hero-particles"></div>
+    <div class="panel-content">
+      <h1 class="panel-heading">The Orbit Lab</h1>
+      <p class="panel-line">A permanent living ecosystem, surrounded by constantly changing culinary worlds.</p>
+    </div>
+  </div>
+
+  <section class="concept-scene" id="intro-concept">
+    <div class="concept-sticky">
+      <canvas class="concept-canvas"></canvas>
+      <div class="concept-beat" data-beat="0">
+        <div class="panel-content">
+          <p class="panel-line">The building has its own gravity. Brands don't occupy the space — they're captured by it.</p>
+        </div>
+      </div>
+      <div class="concept-beat" data-beat="1">
+        <div class="panel-content">
+          <p class="panel-line">The closer to the core, the more permanent the program. The further out, the more it changes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="principles-hub" id="brand-principles">
+    <div class="hub-intro">
+      <span class="section-kicker">Brand Principles</span>
+      <h2 class="hub-heading">Four Ideas, <br>One System</h2>
+      <p class="hub-line">Click a principle to see how it works.</p>
+    </div>
+    <div class="hub-grid">
+      <button class="hub-card" data-target="detail-farm">
+        <div class="hub-card-media" style="background-image:url('IMAGES/FARM TO TABLE/FARM TO TABLE.png')"></div>
+        <div class="hub-card-scrim"></div>
+        <span class="hub-card-arrow">→</span>
+        <span class="hub-card-title">Farm to Table</span>
+      </button>
+      <button class="hub-card" data-target="detail-tech">
+        <div class="hub-card-media" style="background-image:url('IMAGES/TECH INTEGRATION/TECH INTEGRATION_ROBOT CONVEYOR.png')"></div>
+        <div class="hub-card-scrim"></div>
+        <span class="hub-card-arrow">→</span>
+        <span class="hub-card-title">Tech Integration</span>
+      </button>
+      <button class="hub-card" data-target="detail-spatial">
+        <div class="hub-card-media" style="background-image:url('IMAGES/SPATIAL FLEXIBILITY/ChatGPT Image Sep 18, 2026, 06_21_43 PM.png')"></div>
+        <div class="hub-card-scrim"></div>
+        <span class="hub-card-arrow">→</span>
+        <span class="hub-card-title">Spatial Flexibility</span>
+      </button>
+      <button class="hub-card" data-target="detail-brand">
+        <div class="hub-card-media" style="background-image:url('IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_KIOSK.png')"></div>
+        <div class="hub-card-scrim"></div>
+        <span class="hub-card-arrow">→</span>
+        <span class="hub-card-title">Brand Integration &amp; Swappability</span>
+      </button>
+    </div>
+  </section>
+
+  <div class="principle-detail" id="detail-farm">
+    <button class="detail-close">← Back</button>
+    <div class="principle-panel detail-hero" id="principle-farm">
+      <div class="panel-bg" style="background-image:url('IMAGES/FARM TO TABLE/FARM TO TABLE.png')"></div>
+      <div class="panel-scrim"></div>
+      <div class="panel-content">
+        <h3 class="panel-heading">Farm to Table</h3>
+        <p class="panel-line">On-site vertical growing turns the dining room into an active farm — herbs and greens harvested hours before they reach the plate.</p>
+      </div>
+    </div>
+    <div class="detail-moments">
+      <div class="moment-row">
+        <div class="moment-media"><img src="IMAGES/FARM TO TABLE/FARM TO TABLE.png" alt="Vertical growing towers wrapping the dining room"></div>
+        <div class="moment-text">
+          <span class="section-kicker">The Growing Wall</span>
+          <h4 class="moment-heading">Grown in the room, not shipped to it</h4>
+          <p>Vertical towers wrap the dining room in living herbs and greens — the same plants guests see growing are the ones that land on their plate that night.</p>
+        </div>
+      </div>
+      <div class="moment-row reverse">
+        <div class="moment-media"><img src="IMAGES/FARM TO TABLE/KITCHEN LAB.jpg" alt="Chef harvesting herbs beside a live climate dashboard"></div>
+        <div class="moment-text">
+          <span class="section-kicker">The Living Kitchen</span>
+          <h4 class="moment-heading">A dashboard for every tower</h4>
+          <p>Humidity, light, and yield are tracked live for every tower, so the kitchen harvests at peak freshness and builds the menu around what's ready that day.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="principle-detail" id="detail-tech">
+    <button class="detail-close">← Back</button>
+    <div class="principle-panel split detail-hero" id="principle-tech">
+      <div class="tech-half mech">
+        <div class="panel-bg" style="background-image:url('IMAGES/TECH INTEGRATION/TECH INTEGRATION_ROBOT CONVEYOR.png')"></div>
+        <div class="panel-scrim"></div>
+        <div class="panel-content">
+          <span class="panel-kicker section-kicker">Robotics &amp; Motion</span>
+          <h3 class="panel-heading small">Conveyor &amp; Arms</h3>
+          <p class="panel-line">A conveyor circulates dishes through the space while robotic arms garnish and serve — motion and precision working the same line as the chefs.</p>
+        </div>
+      </div>
+      <div class="tech-half digital">
+        <div class="panel-content">
+          <span class="panel-kicker section-kicker">Connected Guest Experience</span>
+          <img class="app-mock" src="IMAGES/TECH INTEGRATION/TECH INTEGRATION_APP.png" alt="Orbit app showing dish details, ingredient origin, and impact">
+          <h3 class="panel-heading small">The Orbit App</h3>
+          <p class="panel-line">See what's growing, what's in your dish, and exactly where every ingredient came from.</p>
+        </div>
+      </div>
+    </div>
+    <div class="detail-moments">
+      <div class="moment-row">
+        <div class="moment-media"><img src="IMAGES/TECH INTEGRATION/TECH INTEGRATION_CONVEYOR_02.png" alt="Branded conveyor line serving premium wagyu smash burgers"></div>
+        <div class="moment-text">
+          <span class="section-kicker">Every Counter, One Line</span>
+          <h4 class="moment-heading">One belt, any brand</h4>
+          <p>The same kaiten line carries sushi, burgers, or bowls. Each activation brands the belt, the trays, and the signage — without touching the hardware underneath.</p>
+        </div>
+      </div>
+      <div class="moment-row reverse">
+        <div class="moment-media"><img src="IMAGES/TECH INTEGRATION/TECH INTEGRATION_APP_02.png" alt="Guest using the app to trace a dish back to its ingredients"></div>
+        <div class="moment-text">
+          <span class="section-kicker">Full Traceability</span>
+          <h4 class="moment-heading">Every dish, fully sourced</h4>
+          <p>Point a phone at any dish on the line to see exactly which tower it grew in, how far it traveled, and what's in it — down to the gram.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="principle-detail" id="detail-spatial">
+    <button class="detail-close">← Back</button>
+    <div class="principle-panel detail-hero" id="principle-spatial">
+      <div class="panel-bg" style="background-image:url('IMAGES/SPATIAL FLEXIBILITY/image - 2026-09-18T181945.933.png')"></div>
+      <div class="panel-scrim"></div>
+      <div class="panel-content">
+        <h3 class="panel-heading">Spatial Flexibility</h3>
+        <p class="panel-line">Stackable, lightweight furniture and hydroponic walls on hidden wheels reconfigure the floor in minutes — the same space hosts a quiet lunch, a brand launch, or a full presentation by nightfall.</p>
+      </div>
+    </div>
+    <div class="detail-moments">
+      <div class="moment-row">
+        <div class="moment-media"><img src="IMAGES/SPATIAL FLEXIBILITY/ChatGPT Image Sep 18, 2026, 06_21_43 PM.png" alt="Lightweight stools nesting into a stacked column beside single stools"></div>
+        <div class="moment-text">
+          <span class="section-kicker">Built to Move</span>
+          <h4 class="moment-heading">Stackable, light, gone in minutes</h4>
+          <p>Every stool and table is light enough to lift with one hand and stacks flush against the next. A dining floor for two hundred folds down and rolls out of the way in minutes — the same footprint hosts a brand launch, a press briefing, or a quiet lunch service without a single wall moving.</p>
+        </div>
+      </div>
+      <div class="moment-row reverse">
+        <div class="moment-media"><img src="IMAGES/SPATIAL FLEXIBILITY/ChatGPT Image Sep 18, 2026, 06_22_05 PM.png" alt="Hydroponic growing wall on hidden casters, detail of discreet mobility"></div>
+        <div class="moment-text">
+          <span class="section-kicker">The Garden Moves, Too</span>
+          <h4 class="moment-heading">Hydroponic walls on hidden wheels</h4>
+          <p>The growing towers that wrap the dining room aren't fixed either — each one sits on casters hidden inside its base, so the living wall itself can roll into a new position as the floor reconfigures around it.</p>
+        </div>
+      </div>
+    </div>
+    <div class="detail-extra">
+      <div class="switcher-intro" style="flex:1 1 100%; text-align:center;">
+        <span class="section-kicker" style="justify-content:center;">One Floor, Three Events</span>
+      </div>
+      <div class="brand-switcher wide" data-switcher="events">
+        <div class="switcher-tabs">
+          <button class="switcher-tab active" data-image="IMAGES/SPATIAL FLEXIBILITY/image - 2026-09-18T180619.121.png" data-caption="Standard configuration — round tables seat a full dining service around the core.">Dining</button>
+          <button class="switcher-tab" data-image="IMAGES/SPATIAL FLEXIBILITY/image - 2026-09-18T181945.933.png" data-caption="Tables swap for cocktail rounds and signage — the floor resets for a brand launch in the same footprint.">Brand Launch</button>
+          <button class="switcher-tab" data-image="IMAGES/SPATIAL FLEXIBILITY/image - 2026-09-18T181949.326.png" data-caption="Seating turns to face the core — the kitchen becomes the stage for a live presentation.">Presentation</button>
+        </div>
+        <div class="switcher-stage">
+          <div class="switcher-image" style="background-image:url('IMAGES/SPATIAL FLEXIBILITY/image - 2026-09-18T180619.121.png')"></div>
+        </div>
+        <span class="switcher-caption">Standard configuration — round tables seat a full dining service around the core.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="principle-detail" id="detail-brand">
+    <button class="detail-close">← Back</button>
+    <div class="principle-panel detail-hero" id="principle-brand">
+      <div class="panel-bg" style="background-image:url('IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_KIOSK.png')"></div>
+      <div class="panel-scrim"></div>
+      <div class="panel-content">
+        <h3 class="panel-heading">Brand Integration <br>&amp; Swappability</h3>
+        <p class="panel-line">Kiosks reskin, table and space decor swaps, and signage reads different content — the same shell becomes a new brand for every activation.</p>
+      </div>
+    </div>
+    <div class="detail-moments">
+      <div class="moment-row">
+        <div class="moment-media contain"><img src="IMAGES/BRAND INTEGRATION/KIOSK_EXTERIOR KIT.png" alt="Exploded diagram of the kiosk's modular exterior kit"></div>
+        <div class="moment-text">
+          <span class="section-kicker">Built to Reskin</span>
+          <h4 class="moment-heading">One shell, a kit of parts</h4>
+          <p>Canopy, header display, side signage, menu holder, mobility base — every kiosk is built from the same modular kit, so a brand can be swapped out in hours, not weeks.</p>
+        </div>
+      </div>
+      <div class="moment-row reverse">
+        <div class="moment-media contain"><img src="IMAGES/BRAND INTEGRATION/KIOSK_INTERIOR KIT.png" alt="Exploded diagram of the kiosk's modular interior kit"></div>
+        <div class="moment-text">
+          <span class="section-kicker">Underneath the Skin</span>
+          <h4 class="moment-heading">The interior kit stays constant</h4>
+          <p>Prep counter, point-of-sale, storage, and service window are fixed in place and identical across every kiosk — only the surface-level branding changes when a concept swaps in.</p>
+        </div>
+      </div>
+    </div>
+    <div class="detail-extra">
+      <div class="brand-switcher" data-switcher="kiosk">
+        <div class="switcher-tabs">
+          <button class="switcher-tab active" data-image="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_KIOSK.png">NŌRI</button>
+          <button class="switcher-tab" data-image="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_KIOSK_02.png">Crush</button>
+          <button class="switcher-tab" data-image="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_KIOSK_03.png">Sweetcircle</button>
+        </div>
+        <div class="switcher-stage">
+          <div class="switcher-image" style="background-image:url('IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_KIOSK.png')"></div>
+        </div>
+        <span class="switcher-caption">Kiosk shell — same footprint, new skin per activation.</span>
+      </div>
+      <div class="brand-switcher" data-switcher="decor">
+        <div class="switcher-tabs">
+          <button class="switcher-tab active" data-image="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_TABLES.png">Burger Theory</button>
+          <button class="switcher-tab" data-image="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_TABLES_02.png">Kōri</button>
+          <button class="switcher-tab" data-image="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_TABLES_03.png">Sugar Orbit</button>
+        </div>
+        <div class="switcher-stage">
+          <div class="switcher-image" style="background-image:url('IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_TABLES.png')"></div>
+        </div>
+        <span class="switcher-caption">Table decor — signage, tableware, and menu cards swap per brand.</span>
+      </div>
+      <div class="brand-switcher" data-switcher="retail">
+        <div class="switcher-tabs">
+          <button class="switcher-tab active" data-image="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_RETAIL.png">NŌRI</button>
+          <button class="switcher-tab" data-image="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_RETAIL_02.png">Crush</button>
+          <button class="switcher-tab" data-image="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_RETAIL_03.png">Sweetcircle</button>
+        </div>
+        <div class="switcher-stage">
+          <div class="switcher-image" style="background-image:url('IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_RETAIL.png')"></div>
+        </div>
+        <span class="switcher-caption">Retail shelving — the same merchandise wall, reskinned per brand.</span>
+      </div>
+    </div>
+    <div class="detail-moments" style="padding-top:0;">
+      <div class="moment-row">
+        <div class="moment-media"><img src="IMAGES/BRAND INTEGRATION/BRAND INTEGRATION_RETAIL_FOOD.jpg" alt="Grab-and-go retail wall stocked with packaged meals and snacks beside the growing wall"></div>
+        <div class="moment-text">
+          <span class="section-kicker">Beyond Merchandise</span>
+          <h4 class="moment-heading">Retail adapts to grab-and-go, too</h4>
+          <p>The same modular shelving carries packaged meals, snacks, and drinks for a fast retail line — chilled and ready, stocked straight from the kitchen behind it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="diagram-section" id="system-diagram">
+    <div class="diagram-intro">
+      <span class="section-kicker">The System</span>
+      <h2 class="diagram-heading">One Core. <br>Four Rings.</h2>
+      <p class="diagram-line">Every principle sits on a ring — the closer to the core, the more permanent it is.</p>
+    </div>
+    <div class="diagram-svg-wrap">
+      <svg class="diagram-svg" viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg" aria-label="Diagram of the core and four rings: vertical farming, kitchen lab, tech integration, dining, kiosks and retail">
+        <g class="diagram-orbit diagram-orbit-1">
+          <circle cx="311.06" cy="337.85" r="5" />
+        </g>
+        <g class="diagram-orbit diagram-orbit-2">
+          <circle cx="280.42" cy="433.59" r="8" />
+          <circle cx="357.43" cy="221.98" r="4" />
+        </g>
+        <g class="diagram-orbit diagram-orbit-3">
+          <circle cx="196.5" cy="399.17" r="10" />
+          <circle cx="363.43" cy="539.3" r="5" />
+        </g>
+        <g class="diagram-orbit diagram-orbit-4">
+          <circle cx="219.3" cy="541.5" r="14" />
+          <circle cx="203.22" cy="173.22" r="6" />
+        </g>
+        <g class="diagram-rings">
+          <circle cx="380" cy="350" r="70" class="ring" />
+          <circle cx="380" cy="350" r="130" class="ring" />
+          <circle cx="380" cy="350" r="190" class="ring" />
+          <circle cx="380" cy="350" r="250" class="ring" />
+          <text x="380" y="397" class="core-label" text-anchor="middle">THE CORE</text>
+        </g>
+        <g class="diagram-leaders">
+          <polyline points="380,350 640,150 680,150" class="leader" />
+          <polyline points="437.34,390.15 640,250 680,250" class="leader" />
+          <polyline points="486.5,424.57 640,350 680,350" class="leader" />
+          <polyline points="535.65,459.0 640,450 680,450" class="leader" />
+          <polyline points="584.8,493.4 640,550 680,550" class="leader" />
+        </g>
+        <g class="diagram-markers">
+          <circle cx="437.34" cy="390.15" r="6" class="marker" />
+          <circle cx="486.5" cy="424.57" r="6" class="marker" />
+          <circle cx="535.65" cy="459.0" r="6" class="marker" />
+          <circle cx="584.8" cy="493.4" r="6" class="marker" />
+          <circle cx="380" cy="350" r="6" class="marker" />
+        </g>
+        <circle cx="380" cy="350" r="4" class="core-dot" />
+        <g class="diagram-labels">
+          <text x="690" y="155" class="diagram-label">VERTICAL FARMING</text>
+          <text x="690" y="255" class="diagram-label">KITCHEN LAB</text>
+          <text x="690" y="355" class="diagram-label">TECH INTEGRATION</text>
+          <text x="690" y="455" class="diagram-label">DINING</text>
+          <text x="690" y="555" class="diagram-label">KIOSKS &amp; RETAIL</text>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="floorplan-section" id="floor-plan">
+    <div class="diagram-intro">
+      <span class="section-kicker">Floor Plan</span>
+      <h2 class="diagram-heading">The Layout</h2>
+      <p class="diagram-line">Ground floor and mezzanine, both organized around the same core.</p>
+    </div>
+    <div class="plan-compare" id="plan-compare">
+      <div class="plan-layer plan-base">
+        <img src="IMAGES/FLOOR PLANS/GROUND FLOOR PLAN.jpg" alt="Ground floor plan" draggable="false">
+        <span class="plan-tag">Ground Floor</span>
+      </div>
+      <div class="plan-layer plan-overlay" style="clip-path: inset(0 50% 0 0);">
+        <img src="IMAGES/FLOOR PLANS/MEZZANINE FLOOR PLAN.jpg" alt="Mezzanine floor plan" draggable="false">
+        <span class="plan-tag">Mezzanine</span>
+      </div>
+      <div class="plan-handle" style="left:50%;">
+        <div class="plan-handle-grip">↔</div>
+      </div>
+    </div>
+    <p class="plan-hint">Drag to compare the ground floor and mezzanine.</p>
+  </section>
+
+  <section class="finale-section" id="spaces">
+    <div class="finale-track">
+      <div class="finale-frame">
+        <img class="finale-frame-img" src="IMAGES/FULL SPACE/01.png" alt="The Orbit Lab — full dining floor beneath the vertical growing core">
+        <div class="finale-frame-caption">
+          <span class="finale-frame-index">01</span>
+          <span class="finale-frame-label">The Full Space</span>
+        </div>
+      </div>
+      <div class="finale-frame">
+        <img class="finale-frame-img" src="IMAGES/FULL SPACE/02.png" alt="Kiosk ring and dining floor viewed from ground level">
+        <div class="finale-frame-caption">
+          <span class="finale-frame-index">02</span>
+          <span class="finale-frame-label">The Full Space</span>
+        </div>
+      </div>
+      <div class="finale-frame">
+        <img class="finale-frame-img" src="IMAGES/FULL SPACE/03.png" alt="Retail wall and mezzanine seen from the ground floor entrance">
+        <div class="finale-frame-caption">
+          <span class="finale-frame-index">03</span>
+          <span class="finale-frame-label">The Full Space</span>
+        </div>
+      </div>
+      <div class="finale-frame finale-frame-materials">
+        <div class="finale-material-stage">
+          <div class="finale-material-image active" style="background-image:url('IMAGES/FULL SPACE/V1.png')"></div>
+          <div class="finale-material-image" style="background-image:url('IMAGES/FULL SPACE/V2.png')"></div>
+          <div class="finale-material-image" style="background-image:url('IMAGES/FULL SPACE/V3.png')"></div>
+        </div>
+        <div class="finale-material-tabs">
+          <button class="finale-material-tab active" data-index="0">V1</button>
+          <button class="finale-material-tab" data-index="1">V2</button>
+          <button class="finale-material-tab" data-index="2">V3</button>
+        </div>
+        <div class="finale-frame-caption">
+          <span class="finale-frame-index">04</span>
+          <span class="finale-frame-label">Material &amp; Design Options</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="trends-section" id="pop-up-trends">
+    <div class="trends-grid">
+      <div class="trends-text">
+        <span class="section-kicker">Market Signal</span>
+        <h2 class="diagram-heading">Pop-Ups Move <br>Faster Than Menus</h2>
+        <p>A cookie video, a canned sushi roll, a limited-run cheesecake — a format can go from a single storefront to a global craving in a week. NYC's stuffed cookies, Sushi To-Go's tube packaging in Paris, chocolate-dipped fruit skewers in London, Mickey-shaped pancakes with a topping bar: none of them needed a full restaurant build to prove themselves.</p>
+        <p>That's the gap the kiosk format is built to close. A trend this fast either gets tested inside a reversible module in days, or it's gone before a traditional build-out is even permitted.</p>
+      </div>
+      <div class="trends-window-wrap">
+        <div class="trends-window" id="trends-window">
+          <div class="trends-dots"></div>
+          <div class="trends-slide active" data-caption="Viral NYC Cookies">
+            <img src="IMAGES/POP UPS/Picture1.jpg" alt="Viral NYC stuffed cookie split open">
+            <div class="trends-slide-scrim"><span class="trends-slide-caption">Viral NYC Cookies</span></div>
+          </div>
+          <div class="trends-slide" data-caption="Viral Yoghurt Japanese Cheesecake">
+            <img src="IMAGES/POP UPS/Picture2.png" alt="Viral yoghurt Japanese cheesecake taste test">
+            <div class="trends-slide-scrim"><span class="trends-slide-caption">Viral Yoghurt Japanese Cheesecake</span></div>
+          </div>
+          <div class="trends-slide" data-caption="C'Roll Sushi, Tube Packaging">
+            <img src="IMAGES/POP UPS/Picture3.jpg" alt="C'Roll sushi roll in portable tube packaging">
+            <div class="trends-slide-scrim"><span class="trends-slide-caption">C'Roll Sushi — Tube Packaging</span></div>
+          </div>
+          <div class="trends-slide" data-caption="Sushi To-Go, Paris">
+            <img src="IMAGES/POP UPS/Screenshot 2026-09-18 165638.png" alt="Sushi To-Go storefront in Paris with tube packaging">
+            <div class="trends-slide-scrim"><span class="trends-slide-caption">Sushi To-Go — Paris</span></div>
+          </div>
+          <div class="trends-slide" data-caption="Chocofruit London, Mickey Pancakes">
+            <img src="IMAGES/POP UPS/Screenshot 2026-09-18 170108.png" alt="Chocofruit London limited-edition Mickey Mouse pancakes with chocolate">
+            <div class="trends-slide-scrim"><span class="trends-slide-caption">Chocofruit London — Mickey Pancakes</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="roadmap-section" id="roadmap">
+    <div class="roadmap-intro">
+      <span class="section-kicker">The Path Forward</span>
+      <h2 class="diagram-heading">From Plan to Opening Day</h2>
+      <p class="diagram-line">Scope, calendar, and the road from Phase 0 to a running kiosk network.</p>
+    </div>
+
+    <div class="roadmap-block">
+      <div class="roadmap-block-inner">
+        <div class="roadmap-block-heading">
+          <span class="section-kicker">Scope, Calendar &amp; Phases</span>
+          <h3 class="diagram-heading" style="font-size:clamp(28px,3.4vw,42px);">Three Phases, Built in Order</h3>
+          <p class="diagram-line">Phase 0 defines the full conceptual and operational foundation, builds The Orbit Lab, and launches its first kiosks. Deliberately left out of this first launch: catering and ready-meal production for retail, which comes later.</p>
+        </div>
+        <div class="phase-grid">
+          <div class="phase-card">
+            <span class="phase-card-num">PHASE 0</span>
+            <h4>Foundation</h4>
+            <p>Defining The Orbit Lab concept, research, and brand architecture. Real start: the first kiosks and the kitchen.</p>
+          </div>
+          <div class="phase-card">
+            <span class="phase-card-num">PHASE 1</span>
+            <h4>Development</h4>
+            <p>Architecture and space design, led by Carmelo Zappulla and External Reference.</p>
+          </div>
+          <div class="phase-card">
+            <span class="phase-card-num">PHASE 2</span>
+            <h4>Operation</h4>
+            <p>The on-the-ground team model, defined once the project has launched and Phase 0 is validated.</p>
+          </div>
+        </div>
+        <div class="phase-timing">
+          <div class="timing-item">
+            <div class="timing-value">1–4 months</div>
+            <div class="timing-label">Concept, Operations &amp; Tech</div>
+            <p class="timing-note">From kickoff to site handover.</p>
+          </div>
+          <div class="timing-item">
+            <div class="timing-value">TBD</div>
+            <div class="timing-label">Construction</div>
+            <p class="timing-note">Firms up once the site and local contractors are known — the one variable not yet pinned down.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="roadmap-block">
+      <div class="roadmap-block-inner">
+        <div class="roadmap-block-heading">
+          <span class="section-kicker">Where Our Part Ends</span>
+          <h3 class="diagram-heading" style="font-size:clamp(28px,3.4vw,42px);">What We Build, What Comes Next</h3>
+          <p class="diagram-line">Our contribution is intangible: structuring and conceptualization — and it has an end date: launch. Everything the build needs, delivered by a team of professionals across kitchen, marketing, operations, workflow design, and delivery.</p>
+        </div>
+        <div class="deliver-grid">
+          <div class="deliver-card">
+            <h4>What We Deliver</h4>
+            <ul>
+              <li>Concept, structure, and process design</li>
+              <li>Defining which roles the business needs and how each one has to work</li>
+              <li>The blueprint, built to last beyond us</li>
+            </ul>
+          </div>
+          <div class="deliver-card after">
+            <h4>What Comes After</h4>
+            <ul>
+              <li>Running the business day to day</li>
+              <li>General Manager, Operations Manager, Head Chef, Floor Manager, Training, Security</li>
+              <li>The permanent team, built and led on the ground, with people trusted locally</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="roadmap-block">
+      <div class="roadmap-block-inner">
+        <div class="roadmap-block-heading">
+          <span class="section-kicker">The Full Scope</span>
+          <h3 class="diagram-heading" style="font-size:clamp(28px,3.4vw,42px);">What Phase 0 Actually Covers</h3>
+          <p class="diagram-line">Four blocks, task by task. The conceptual work is the bulk of it — technology is one part of a much bigger picture, not the headline.</p>
+        </div>
+        <div class="scope-grid">
+          <div class="scope-card">
+            <h4>Concept &amp; Operations</h4>
+            <ul>
+              <li>Market sizing, competitive benchmarking, and The Orbit Lab's own methodology, defined from the ground up</li>
+              <li>The concept run through that process, from positioning to day-to-day production and service flows</li>
+              <li>Written SOPs per channel, ready to hand to the operating team</li>
+            </ul>
+          </div>
+          <div class="scope-card">
+            <h4>Development</h4>
+            <ul>
+              <li>Central Production Kitchen (approx. 1,000 m²): produces components, not dishes; kiosks finish in 2–4 minutes</li>
+              <li>A single iconic kiosk module, rolled out in stages</li>
+              <li>Order tech: POS, delivery integration, dashboard, direct channel &amp; loyalty</li>
+            </ul>
+          </div>
+          <div class="scope-card">
+            <h4>Legal, Brand &amp; Supply</h4>
+            <ul>
+              <li>Dubai company formation, licensing, halal certification</li>
+              <li>The Orbit Lab trademark registration</li>
+              <li>Origin sourcing agreements and import logistics</li>
+            </ul>
+          </div>
+          <div class="scope-card">
+            <h4>Runway</h4>
+            <ul>
+              <li>Payroll and operations through the first year</li>
+              <li>Launch marketing</li>
+              <li>Contingency</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="roadmap-block">
+      <div class="roadmap-block-inner">
+        <div class="roadmap-block-heading">
+          <span class="section-kicker">Roadmap</span>
+          <h3 class="diagram-heading" style="font-size:clamp(28px,3.4vw,42px);">From Zero to Regional</h3>
+        </div>
+        <div class="timeline">
+          <div class="timeline-step" data-num="0">
+            <h4>Foundation</h4>
+            <ul>
+              <li>Business plan &amp; market research</li>
+              <li>Define The Orbit Lab's methodology</li>
+              <li>Concept work: menu, kiosks, technology</li>
+              <li>Licensing with External Reference</li>
+            </ul>
+          </div>
+          <div class="timeline-step" data-num="1">
+            <h4>Development</h4>
+            <ul>
+              <li>Warehouse secured</li>
+              <li>Space &amp; kiosk design</li>
+              <li>Central kitchen build-out</li>
+            </ul>
+          </div>
+          <div class="timeline-step" data-num="2">
+            <h4>First Launch</h4>
+            <ul>
+              <li>The Orbit Lab opens</li>
+              <li>Kitchen live</li>
+              <li>Direct channel &amp; loyalty live</li>
+            </ul>
+          </div>
+          <div class="timeline-step" data-num="3">
+            <h4>Scale Dubai</h4>
+            <ul>
+              <li>Densify the kiosk network</li>
+              <li>Evaluate additional kiosk concepts</li>
+              <li>First regional market scoped</li>
+            </ul>
+          </div>
+          <div class="timeline-step" data-num="4">
+            <h4>Go Regional</h4>
+            <ul>
+              <li>Playbook packaged for export</li>
+              <li>Replicate The Orbit Lab model</li>
+              <li>First Arab League market entry</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="roadmap-block">
+      <div class="roadmap-block-inner next-step-inner">
+        <span class="section-kicker" style="justify-content:center;">Next Step</span>
+        <h3 class="diagram-heading">A Methodology First. <br>Then the Growth.</h3>
+        <p>Starting point: the flagship kitchen and its first kiosks, one idea already proven on the table. Agree the structure and the phased approach set out here. Once aligned, we formalize Phase 0 and the research begins — with The Orbit Lab's own methodology at the center.</p>
+      </div>
+    </div>
+
+    <div class="roadmap-block">
+      <div class="roadmap-block-inner">
+        <div class="roadmap-block-heading">
+          <span class="section-kicker">Appendix</span>
+          <h3 class="diagram-heading" style="font-size:clamp(28px,3.4vw,42px);">Two People, One Project</h3>
+          <p class="diagram-line">Each in their own domain: strategy and brand, architecture and design.</p>
+        </div>
+        <div class="appendix-grid">
+          <div class="appendix-card">
+            <h4>Luca Tateo</h4>
+            <span class="appendix-role">Strategy, Brand &amp; Operations</span>
+            <p>Italian-born executive, entrepreneur and advisor with 30+ years across the full food value chain. Economics and Commerce, La Sapienza (Rome); MSc Marketing Management, ESADE. Senior leadership at Guzmán Gastronomía/Bidfood alongside Ferran Adrià and Martín Berasategui; General Manager of Martín Berasategui Gastronomía; Marketing Director of Grup Ametller Origen, where he conceived Mercats d'Autor. Founder of Genuinus, EsdeMercado, Ooh! Bento and Chōbō Collective. Currently Marketing Director of Condis Supermercats.</p>
+            <p class="appendix-quote">"More than a marketing specialist, I consider myself a business builder."</p>
+          </div>
+          <div class="appendix-card">
+            <h4>Carmelo Zappulla</h4>
+            <span class="appendix-role">Architecture &amp; Design</span>
+            <p>Italian architect, honours graduate of the University of Palermo, PhD with European Mention from UPC. Founder, CEO and Head of Design of External Reference (Barcelona, ~40 professionals, 17+ countries). Named by New Italian Blood as best Italian architect under 36 (2011). Studio behind the Spain Pavilion at Expo Dubai 2020, Sberbank's Moscow HQ, Nova Bocana, WOW Madrid, Alkimia and Vicio. Winner of the Architecture Master Prize, World Architecture Festival Award and SBID International Design Award. Directs the Master's in Experiential Design at LCI Barcelona; taught at IAAC.</p>
+            <p class="appendix-quote">"We integrate luxury and sustainability, digital and physical, art and technology."</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing-section" id="closing">
+    <div class="closing-bg" style="background-image:url('IMAGES/01.jpg')"></div>
+    <div class="closing-scrim"></div>
+    <div class="closing-content">
+      <span class="closing-brand">The Orbit Lab</span>
+      <a class="closing-logo-link" href="https://externalreference.com/" target="_blank" rel="noopener noreferrer" aria-label="External Reference — opens in a new tab">
+        <img src="IMAGES/logo/external-reference-logo.png" alt="External Reference" class="closing-logo">
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<script>
+const cursorInner = document.querySelector('.cursor-inner');
+const cursorOuter = document.querySelector('.cursor-outer');
+
+let cursorX = window.innerWidth / 2, cursorY = window.innerHeight / 2;
+let outerCursorX = cursorX, outerCursorY = cursorY;
+
+window.addEventListener('mousemove', (event) => {
+    cursorX = event.clientX;
+    cursorY = event.clientY;
+    if (cursorInner) { cursorInner.style.left = `${cursorX}px`; cursorInner.style.top = `${cursorY}px`; }
+});
+
+function animateCursor() {
+    requestAnimationFrame(animateCursor);
+    outerCursorX += (cursorX - outerCursorX) * 0.2;
+    outerCursorY += (cursorY - outerCursorY) * 0.2;
+    if (cursorOuter) { cursorOuter.style.left = `${outerCursorX}px`; cursorOuter.style.top = `${outerCursorY}px`; }
+}
+
+function setupNavigation() {
+    document.querySelectorAll('.nav-link').forEach((link) => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href').slice(1);
+            const target = document.getElementById(targetId);
+            if (target) target.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+}
+
+function setupScrollReveal(selector, options) {
+    const els = document.querySelectorAll(selector);
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('in-view');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, options || { threshold: 0.3 });
+    els.forEach((el) => observer.observe(el));
+}
+
+function setupHeroParticles() {
+    const container = document.querySelector('.hero-particles');
+    if (!container) return;
+    const count = 22;
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'hero-particle';
+        const size = 2 + Math.random() * 2.5;
+        const left = Math.random() * 100;
+        const duration = 16 + Math.random() * 16;
+        const delay = -Math.random() * duration;
+        const drift = (Math.random() - 0.5) * 80;
+        const pmax = 0.2 + Math.random() * 0.25;
+        p.style.width = `${size}px`;
+        p.style.height = `${size}px`;
+        p.style.left = `${left}%`;
+        p.style.animationDuration = `${duration}s`;
+        p.style.animationDelay = `${delay}s`;
+        p.style.setProperty('--drift', `${drift}px`);
+        p.style.setProperty('--pmax', pmax);
+        container.appendChild(p);
+    }
+}
+
+function setupPlanCompare() {
+    const compare = document.getElementById('plan-compare');
+    if (!compare) return;
+    const overlay = compare.querySelector('.plan-overlay');
+    const handle = compare.querySelector('.plan-handle');
+    let dragging = false;
+
+    function setSplit(percent) {
+        percent = Math.max(0, Math.min(100, percent));
+        overlay.style.clipPath = `inset(0 ${100 - percent}% 0 0)`;
+        handle.style.left = `${percent}%`;
+    }
+
+    function updateFromClientX(clientX) {
+        const rect = compare.getBoundingClientRect();
+        setSplit(((clientX - rect.left) / rect.width) * 100);
+    }
+
+    compare.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        compare.setPointerCapture(e.pointerId);
+        updateFromClientX(e.clientX);
+    });
+    compare.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        updateFromClientX(e.clientX);
+    });
+    compare.addEventListener('pointerup', () => { dragging = false; });
+    compare.addEventListener('pointercancel', () => { dragging = false; });
+}
+
+function setupConceptScene() {
+    const section = document.querySelector('.concept-scene');
+    const beats = document.querySelectorAll('.concept-beat');
+    if (!section || beats.length < 2) return;
+
+    function update() {
+        const rect = section.getBoundingClientRect();
+        const scrollable = rect.height - window.innerHeight;
+        let progress = scrollable > 0 ? (-rect.top) / scrollable : 0;
+        progress = Math.max(0, Math.min(1, progress));
+
+        const beat0 = Math.max(0, Math.min(1, 1 - progress * 2.2));
+        const beat1 = Math.max(0, Math.min(1, (progress - 0.3) * 2.2));
+
+        beats[0].style.opacity = beat0;
+        beats[0].style.transform = `translateY(${-progress * 36}px)`;
+        beats[1].style.opacity = beat1;
+        beats[1].style.transform = `translateY(${(1 - progress) * 36}px)`;
+
+        requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
+
+function setupPrincipleHub() {
+    const cards = document.querySelectorAll('.hub-card');
+    const details = document.querySelectorAll('.principle-detail');
+    const revealedDetails = new Set();
+
+    function openDetail(id) {
+        const target = document.getElementById(id);
+        if (!target) return;
+        details.forEach((d) => {
+            d.classList.remove('open');
+            const panel = d.querySelector('.principle-panel');
+            if (panel) panel.classList.remove('in-view');
+        });
+        target.classList.add('open');
+        target.scrollTop = 0;
+        document.documentElement.classList.add('detail-open');
+        document.body.classList.add('detail-open');
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const panel = target.querySelector('.principle-panel');
+                if (panel) panel.classList.add('in-view');
+            });
+        });
+        if (!revealedDetails.has(id)) {
+            revealedDetails.add(id);
+            setupScrollReveal(`#${id} .moment-row`, { threshold: 0.2 });
+        }
+    }
+
+    function closeDetails() {
+        details.forEach((d) => {
+            d.classList.remove('open');
+            const panel = d.querySelector('.principle-panel');
+            if (panel) panel.classList.remove('in-view');
+        });
+        document.documentElement.classList.remove('detail-open');
+        document.body.classList.remove('detail-open');
+    }
+
+    cards.forEach((card) => {
+        card.addEventListener('click', () => openDetail(card.dataset.target));
+    });
+
+    details.forEach((detail) => {
+        const closeBtn = detail.querySelector('.detail-close');
+        if (closeBtn) closeBtn.addEventListener('click', closeDetails);
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeDetails();
+    });
+}
+
+function setupBrandSwitchers() {
+    document.querySelectorAll('.brand-switcher').forEach((switcher) => {
+        const stageImg = switcher.querySelector('.switcher-image');
+        const captionEl = switcher.querySelector('.switcher-caption');
+        const tabs = switcher.querySelectorAll('.switcher-tab');
+        if (!stageImg) return;
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                if (tab.classList.contains('active')) return;
+                tabs.forEach((t) => t.classList.remove('active'));
+                tab.classList.add('active');
+                stageImg.classList.add('switching');
+                setTimeout(() => {
+                    stageImg.style.backgroundImage = `url('${tab.dataset.image}')`;
+                    if (captionEl && tab.dataset.caption) captionEl.textContent = tab.dataset.caption;
+                    stageImg.classList.remove('switching');
+                }, 220);
+            });
+        });
+    });
+}
+
+function setupFinaleMaterials() {
+    const tabs = document.querySelectorAll('.finale-material-tab');
+    const images = document.querySelectorAll('.finale-material-image');
+    if (!tabs.length) return;
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            if (tab.classList.contains('active')) return;
+            tabs.forEach((t) => t.classList.remove('active'));
+            images.forEach((img) => img.classList.remove('active'));
+            tab.classList.add('active');
+            images[Number(tab.dataset.index)].classList.add('active');
+        });
+    });
+}
+
+function setupCursorHoverFeedback() {
+    if (!cursorOuter) return;
+    document.querySelectorAll('.hub-card, .switcher-tab, .detail-close, .nav-link, .contact-btn, .header-logo, .plan-compare, .trends-dot, .finale-material-tab, .closing-logo-link').forEach((el) => {
+        el.addEventListener('mouseenter', () => cursorOuter.classList.add('hovering'));
+        el.addEventListener('mouseleave', () => cursorOuter.classList.remove('hovering'));
+    });
+}
+
+function setupTrendsWindow() {
+    const window_ = document.getElementById('trends-window');
+    if (!window_) return;
+    const slides = window_.querySelectorAll('.trends-slide');
+    const dotsWrap = window_.querySelector('.trends-dots');
+    if (!slides.length || !dotsWrap) return;
+    let active = 0;
+
+    slides.forEach((slide, i) => {
+        const dot = document.createElement('button');
+        dot.className = 'trends-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', slide.dataset.caption || `Slide ${i + 1}`);
+        dot.addEventListener('click', () => goTo(i));
+        dotsWrap.appendChild(dot);
+    });
+    const dots = dotsWrap.querySelectorAll('.trends-dot');
+
+    function goTo(index) {
+        slides[active].classList.remove('active');
+        dots[active].classList.remove('active');
+        active = index;
+        slides[active].classList.add('active');
+        dots[active].classList.add('active');
+    }
+
+    setInterval(() => { goTo((active + 1) % slides.length); }, 4000);
+}
+
+function setupFinaleScroll() {
+    const sectionEl = document.querySelector('.finale-section');
+    const trackEl = document.querySelector('.finale-track');
+    if (!sectionEl || !trackEl) return;
+    function update() {
+        const rect = sectionEl.getBoundingClientRect();
+        const scrollable = rect.height - window.innerHeight;
+        let progress = scrollable > 0 ? (-rect.top) / scrollable : 0;
+        progress = Math.max(0, Math.min(1, progress));
+        const maxShift = trackEl.scrollWidth - window.innerWidth;
+        trackEl.style.transform = `translateX(${-progress * maxShift}px)`;
+        requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    animateCursor();
+    setupNavigation();
+    setupScrollReveal('.intro-panel', { threshold: 0.35 });
+    setupScrollReveal('.principles-hub', { threshold: 0.2 });
+    setupScrollReveal('.diagram-section', { threshold: 0.25 });
+    setupScrollReveal('.floorplan-section', { threshold: 0.25 });
+    setupScrollReveal('.trends-grid', { threshold: 0.2 });
+    setupScrollReveal('.roadmap-block-inner', { threshold: 0.15 });
+    setupScrollReveal('.closing-section', { threshold: 0.4 });
+    setupHeroParticles();
+    setupPlanCompare();
+    setupConceptScene();
+    setupPrincipleHub();
+    setupBrandSwitchers();
+    setupCursorHoverFeedback();
+    setupFinaleScroll();
+    setupFinaleMaterials();
+    setupTrendsWindow();
+});
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const canvas = document.querySelector('.concept-canvas');
+const conceptSceneEl = document.querySelector('.concept-scene');
+
+if (canvas && conceptSceneEl) {
+    let scene, camera, renderer;
+    let galaxyPivot;
+    let coreMesh;
+    const ringGroups = [];
+    const clock = new THREE.Clock();
+    let currentScroll = 0;
+
+    let isDragging = false;
+    let dragPrevX = 0, dragPrevY = 0;
+    let dragRotationY = 0, dragRotationX = 0;
+    let galaxyAutoSpin = 0;
+
+    let mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
+
+    let bgMaterial;
+    const shaderUniforms = {
+        uTime: { value: 0 },
+        uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+        uMouse: { value: new THREE.Vector2(0, 0) },
+        uScroll: { value: 0 }
+    };
+
+    let dustParticles;
+    const dustCount = 450;
+    const dustData = [];
+
+    const sizes = { width: window.innerWidth, height: window.innerHeight };
+
+    function createBackgroundShader() {
+        const vertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            varying vec2 vUv;
+            uniform float uTime;
+            uniform vec2 uResolution;
+            uniform vec2 uMouse;
+            uniform float uScroll;
+
+            void main() {
+                vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution.xy) / uResolution.y;
+                float aspect = uResolution.x / uResolution.y;
+
+                float time = uTime * 0.08;
+                float scroll = uScroll;
+
+                float angle1 = 0.6;
+                float angle2 = -0.7;
+                float angle3 = 1.2;
+
+                float freq1 = 2.4;
+                float freq2 = 3.2;
+                float freq3 = 4.0;
+
+                vec2 warpedUv = uv;
+                float scrollDeform = scroll * 5.0;
+
+                warpedUv.x += sin(uv.y * 2.5 + time * 0.2 + scrollDeform) * 0.35;
+                warpedUv.y += cos(uv.x * 2.5 - time * 0.15 - scrollDeform * 0.8) * 0.35;
+
+                warpedUv.x += sin(uv.y * 1.2 - time * 0.1 - scrollDeform * 1.5) * 0.25;
+                warpedUv.y += cos(uv.x * 1.2 + time * 0.18 + scrollDeform * 1.2) * 0.25;
+
+                vec2 scrollDrift = vec2(scroll * 0.04, -scroll * 0.02);
+                vec2 mouseShift = vec2(uMouse.x * aspect * 0.05, uMouse.y * 0.05);
+                warpedUv += scrollDrift + mouseShift;
+
+                vec2 dir1 = vec2(cos(angle1), sin(angle1));
+                vec2 dir2 = vec2(cos(angle2), sin(angle2));
+                vec2 dir3 = vec2(cos(angle3), sin(angle3));
+
+                float w1 = sin(dot(warpedUv, dir1) * freq1 + time * 1.0);
+                float w2 = cos(dot(warpedUv, dir2) * freq2 - time * 1.4 + w1 * 0.4);
+                float w3 = sin(dot(warpedUv, dir3) * freq3 + time * 1.8 + w2 * 0.5);
+
+                float waveField = w1 * 0.50 + w2 * 0.35 + w3 * 0.15;
+
+                float wideSheen = pow(max(0.0, 1.0 - abs(waveField - 0.1)), 2.5);
+                float crispSpecular = pow(max(0.0, 1.0 - abs(waveField - 0.15)), 8.0);
+                float crest = wideSheen * 0.5 + crispSpecular * 0.9;
+
+                vec3 c0_shadow = vec3(0.006, 0.007, 0.010);
+                vec3 c0_wave1  = vec3(0.030, 0.034, 0.012);
+                vec3 c0_wave2  = vec3(0.018, 0.020, 0.008);
+                vec3 c0_crest  = vec3(0.38, 0.42, 0.14);
+
+                vec3 c1_shadow = vec3(0.005, 0.006, 0.010);
+                vec3 c1_wave1  = vec3(0.014, 0.026, 0.030);
+                vec3 c1_wave2  = vec3(0.008, 0.016, 0.020);
+                vec3 c1_crest  = vec3(0.16, 0.30, 0.34);
+
+                float t = smoothstep(0.0, 1.0, scroll);
+                vec3 colShadow = mix(c0_shadow, c1_shadow, t);
+                vec3 colWave1  = mix(c0_wave1, c1_wave1, t);
+                vec3 colWave2  = mix(c0_wave2, c1_wave2, t);
+                vec3 colCrest  = mix(c0_crest, c1_crest, t);
+
+                vec3 color = colShadow;
+                color = mix(color, colWave2, smoothstep(-0.6, 0.2, waveField));
+                color = mix(color, colWave1, smoothstep(0.0, 0.8, waveField));
+                color += colCrest * crest * 1.4;
+
+                float vignette = 1.0 - dot(uv, uv) * 0.12;
+                color *= vignette;
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        bgMaterial = new THREE.ShaderMaterial({
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            uniforms: shaderUniforms,
+            depthWrite: false,
+            depthTest: false
+        });
+
+        const bgGeometry = new THREE.PlaneGeometry(30, 30);
+        const bgMesh = new THREE.Mesh(bgGeometry, bgMaterial);
+        bgMesh.position.set(0.0, 0.0, -8.0);
+        bgMesh.renderOrder = -10;
+        camera.add(bgMesh);
+    }
+
+    function createDustTexture() {
+        const c = document.createElement('canvas');
+        c.width = 16; c.height = 16;
+        const ctx = c.getContext('2d');
+        const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+        gradient.addColorStop(0, 'rgba(241, 236, 221, 1)');
+        gradient.addColorStop(0.25, 'rgba(241, 236, 221, 0.85)');
+        gradient.addColorStop(0.6, 'rgba(241, 236, 221, 0.3)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 16, 16);
+        return new THREE.CanvasTexture(c);
+    }
+
+    function createDust() {
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(dustCount * 3);
+        const colors = new Float32Array(dustCount * 3);
+
+        for (let i = 0; i < dustCount; i++) {
+            const x = (Math.random() - 0.5) * 7.0;
+            const y = (Math.random() - 0.5) * 5.0;
+            const z = (Math.random() - 0.5) * 7.0;
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = z;
+
+            if (Math.random() < 0.55) {
+                colors[i * 3] = 0.85 + Math.random() * 0.1;
+                colors[i * 3 + 1] = 0.95 + Math.random() * 0.05;
+                colors[i * 3 + 2] = 0.30 + Math.random() * 0.1;
+            } else {
+                colors[i * 3] = 0.65 + Math.random() * 0.1;
+                colors[i * 3 + 1] = 0.85 + Math.random() * 0.1;
+                colors[i * 3 + 2] = 0.88 + Math.random() * 0.1;
+            }
+
+            dustData.push({
+                speedX: (Math.random() - 0.5) * 0.15,
+                speedY: (Math.random() - 0.5) * 0.1,
+                speedZ: (Math.random() - 0.5) * 0.15,
+                swaySpeed: 0.3 + Math.random() * 1.2,
+                swayRadius: 0.05 + Math.random() * 0.15,
+                phase: Math.random() * Math.PI * 2
+            });
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.02,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            map: createDustTexture()
+        });
+
+        dustParticles = new THREE.Points(geometry, material);
+        scene.add(dustParticles);
+    }
+
+    function buildGalaxy() {
+        galaxyPivot = new THREE.Group();
+        scene.add(galaxyPivot);
+
+        const coreGeo = new THREE.SphereGeometry(0.28, 48, 48);
+        const coreMat = new THREE.MeshStandardMaterial({
+            color: '#b8e4ea',
+            emissive: '#e7fe55',
+            emissiveIntensity: 1.1,
+            roughness: 0.35,
+            metalness: 0.1
+        });
+        coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        coreMesh.castShadow = true;
+        galaxyPivot.add(coreMesh);
+
+        const ringConfig = [
+            { radius: 0.75, tube: 0.004, speed: 0.35, markerColor: '#e7fe55' },
+            { radius: 1.15, tube: 0.004, speed: 0.22, markerColor: '#b8e4ea' },
+            { radius: 1.55, tube: 0.004, speed: 0.14, markerColor: '#e7fe55' },
+            { radius: 1.95, tube: 0.004, speed: 0.09, markerColor: '#b8e4ea' }
+        ];
+
+        ringConfig.forEach((cfg) => {
+            const ringGroup = new THREE.Group();
+
+            const torusGeo = new THREE.TorusGeometry(cfg.radius, cfg.tube, 8, 128);
+            const torusMat = new THREE.MeshBasicMaterial({
+                color: '#f1ecdd',
+                transparent: true,
+                opacity: 0.25
+            });
+            const torus = new THREE.Mesh(torusGeo, torusMat);
+            torus.rotation.x = Math.PI / 2;
+            ringGroup.add(torus);
+
+            const markerGeo = new THREE.SphereGeometry(0.045, 24, 24);
+            const markerMat = new THREE.MeshStandardMaterial({
+                color: cfg.markerColor,
+                emissive: cfg.markerColor,
+                emissiveIntensity: 0.8
+            });
+            const marker = new THREE.Mesh(markerGeo, markerMat);
+            marker.position.set(cfg.radius, 0, 0);
+            marker.castShadow = true;
+            ringGroup.add(marker);
+
+            galaxyPivot.add(ringGroup);
+            ringGroups.push({ group: ringGroup, marker, radius: cfg.radius, speed: cfg.speed, angle: Math.random() * Math.PI * 2 });
+        });
+
+        galaxyPivot.position.y = -0.1;
+    }
+
+    function onWindowResize() {
+        sizes.width = window.innerWidth;
+        sizes.height = window.innerHeight;
+        camera.aspect = sizes.width / sizes.height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(sizes.width, sizes.height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        if (shaderUniforms) shaderUniforms.uResolution.value.set(sizes.width, sizes.height);
+    }
+
+    window.addEventListener('mousemove', (event) => {
+        targetMouseX = (event.clientX / window.innerWidth) * 2 - 1;
+        targetMouseY = (event.clientY / window.innerHeight) * 2 - 1;
+
+        if (isDragging) {
+            const deltaX = event.clientX - dragPrevX;
+            const deltaY = event.clientY - dragPrevY;
+            dragRotationY += deltaX * 0.006;
+            dragRotationX += deltaY * 0.006;
+            dragRotationX = Math.max(-1.1, Math.min(1.1, dragRotationX));
+            dragPrevX = event.clientX;
+            dragPrevY = event.clientY;
+        }
+    });
+    window.addEventListener('resize', onWindowResize);
+
+    canvas.addEventListener('mousedown', (event) => {
+        isDragging = true;
+        dragPrevX = event.clientX;
+        dragPrevY = event.clientY;
+        const cursorOuter = document.querySelector('.cursor-outer');
+        if (cursorOuter) cursorOuter.classList.add('dragging');
+    });
+    window.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        const cursorOuter = document.querySelector('.cursor-outer');
+        if (cursorOuter) cursorOuter.classList.remove('dragging');
+    });
+
+    function getSceneProgress() {
+        const rect = conceptSceneEl.getBoundingClientRect();
+        const scrollable = rect.height - window.innerHeight;
+        let progress = scrollable > 0 ? (-rect.top) / scrollable : 0;
+        return Math.max(0, Math.min(1, progress));
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const deltaTime = clock.getDelta();
+
+        const targetScroll = getSceneProgress();
+        currentScroll += (targetScroll - currentScroll) * 0.06;
+
+        mouseX += (targetMouseX - mouseX) * 0.05;
+        mouseY += (targetMouseY - mouseY) * 0.05;
+
+        if (galaxyPivot) {
+            if (!isDragging) { galaxyAutoSpin += 0.0003; }
+            galaxyPivot.rotation.y = galaxyAutoSpin + dragRotationY + mouseX * 0.05;
+            galaxyPivot.rotation.x = dragRotationX + mouseY * 0.06;
+            galaxyPivot.rotation.z = mouseX * 0.06;
+        }
+
+        if (coreMesh) {
+            const pulse = 1.0 + Math.sin(clock.getElapsedTime() * 1.4) * 0.04;
+            coreMesh.scale.setScalar(pulse);
+        }
+
+        ringGroups.forEach((r) => {
+            r.angle += r.speed * deltaTime;
+            r.marker.position.set(Math.cos(r.angle) * r.radius, 0, Math.sin(r.angle) * r.radius);
+            r.group.rotation.y += r.speed * 0.05 * deltaTime;
+        });
+
+        if (dustParticles) {
+            const positions = dustParticles.geometry.attributes.position.array;
+            const time = clock.getElapsedTime();
+            const scrollVelocity = Math.abs(targetScroll - currentScroll);
+            const speedMultiplier = 1.0 + scrollVelocity * 9.0;
+            const turbulence = scrollVelocity * 0.8;
+
+            for (let i = 0; i < dustCount; i++) {
+                const idx = i * 3;
+                const data = dustData[i];
+                positions[idx]     += data.speedX * deltaTime * speedMultiplier;
+                positions[idx + 1] += data.speedY * deltaTime * speedMultiplier;
+                positions[idx + 2] += data.speedZ * deltaTime * speedMultiplier;
+
+                const currentSway = data.swayRadius * (1.0 + turbulence * 4.0);
+                positions[idx]     += Math.sin(time * data.swaySpeed + data.phase) * currentSway * deltaTime;
+                positions[idx + 2] += Math.cos(time * data.swaySpeed + data.phase) * currentSway * deltaTime;
+
+                if (Math.abs(positions[idx]) > 3.5 || Math.abs(positions[idx + 1]) > 2.5 || Math.abs(positions[idx + 2]) > 3.5) {
+                    positions[idx]     = (Math.random() - 0.5) * 1.0;
+                    positions[idx + 1] = (Math.random() - 0.5) * 1.0;
+                    positions[idx + 2] = (Math.random() - 0.5) * 1.0;
+                }
+            }
+            dustParticles.geometry.attributes.position.needsUpdate = true;
+        }
+
+        const phi = currentScroll * Math.PI * 2.0;
+        const y = 0.35 + Math.sin(currentScroll * Math.PI) * 0.8;
+        const radius = 1.6 + currentScroll * 3.2;
+        const x = radius * Math.sin(phi);
+        const z = radius * Math.cos(phi);
+
+        let transitionProgress = Math.min(1.0, currentScroll / 0.28);
+        let easeFactor = (Math.cos(transitionProgress * Math.PI) + 1.0) * 0.5;
+        const lookAtXOffset = -0.9 * easeFactor;
+        const targetLookAt = new THREE.Vector3(lookAtXOffset, -0.1, 0);
+        const targetPos = new THREE.Vector3(x, y, z);
+        camera.position.lerp(targetPos, 0.08);
+        camera.lookAt(targetLookAt);
+
+        if (shaderUniforms) {
+            shaderUniforms.uTime.value = clock.getElapsedTime();
+            shaderUniforms.uMouse.value.set(mouseX, -mouseY);
+            shaderUniforms.uScroll.value = currentScroll;
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color('#0a0d12');
+        scene.fog = new THREE.FogExp2('#0a0d12', 0.01);
+
+        camera = new THREE.PerspectiveCamera(50, sizes.width / sizes.height, 0.1, 100);
+        camera.position.set(0, 0.2, 3.0);
+        scene.add(camera);
+
+        createBackgroundShader();
+
+        renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true,
+            alpha: false,
+            powerPreference: "high-performance"
+        });
+        renderer.setSize(sizes.width, sizes.height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 2.0;
+
+        const ambientLight = new THREE.AmbientLight('#f1ecdd', 0.12);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.PointLight('#e7fe55', 8.0, 12);
+        keyLight.position.set(0, 0.3, 0);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 1024;
+        keyLight.shadow.mapSize.height = 1024;
+        scene.add(keyLight);
+
+        const rimLight = new THREE.DirectionalLight('#b8e4ea', 6.0);
+        rimLight.position.set(-5, 3, -4);
+        scene.add(rimLight);
+
+        const fillLight = new THREE.DirectionalLight('#f1ecdd', 0.6);
+        fillLight.position.set(-2, -4, 2);
+        scene.add(fillLight);
+
+        createDust();
+        buildGalaxy();
+
+        onWindowResize();
+        animate();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+}
+</script>
+</body>
+</html>
